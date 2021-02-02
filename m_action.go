@@ -39,22 +39,22 @@ const (
 
 // Action represents action attributes of various filters and classes
 type Action struct {
-	Kind        string
-	Index       uint32
-	Stats       *GenStats
-	Cookie      *Cookie
-	Bpf         *ActBpf
-	ConnMark    *Connmark
-	CSum        *Csum
-	Defact      *Defact
-	Ife         *Ife
-	Ipt         *Ipt
-	Mirred      *Mirred
-	Nat         *Nat
-	Sample      *Sample
-	VLan        *VLan
-	Police      *Police
-	TunnelKey   *TunnelKey
+	Kind     string
+	Index    uint32
+	Stats    *GenStats
+	Cookie   *Cookie
+	Bpf      *ActBpf
+	ConnMark *Connmark
+	CSum     *Csum
+	Defact   *Defact
+	Ife      *Ife
+	Ipt      *Ipt
+	Mirred   *Mirred
+	Nat      *Nat
+	Sample   *Sample
+	VLan     *VLan
+	Police   *Police
+	Tunnel   *TunnelKey
 }
 
 func unmarshalActions(data []byte, actions *[]*Action) error {
@@ -211,7 +211,7 @@ func marshalAction(info *Action) ([]byte, error) {
 		}
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaActOptions, Data: data})
 	case "tunnel_key":
-		data, err := marshalTunnelKey(info.TunnelKey)
+		data, err := marshalTunnelKey(info.Tunnel)
 		if err != nil {
 			return []byte{}, err
 		}
@@ -313,7 +313,7 @@ func extractActOptions(data []byte, act *Action, kind string) error {
 		if err := unmarshalTunnelKey(data, info); err != nil {
 			return err
 		}
-		act.TunnelKey = info
+		act.Tunnel = info
 	default:
 		return fmt.Errorf("extractActOptions(): unsupported kind: %s", kind)
 
