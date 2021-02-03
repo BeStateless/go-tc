@@ -256,12 +256,6 @@ func extractTCAOptions(data []byte, tc *Attribute, kind string) error {
 			return err
 		}
 		tc.U32 = info
-	case "flower":
-		info := &Flower{}
-		if err := unmarshalFlower(data, info); err != nil {
-			return err
-		}
-		tc.Flower = info
 	case "rsvp":
 		info := &Rsvp{}
 		if err := unmarshalRsvp(data, info); err != nil {
