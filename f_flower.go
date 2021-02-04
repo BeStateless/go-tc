@@ -102,8 +102,8 @@ type Flower struct {
 	ClassID              *uint32
 	Indev                *string
 	Actions              *[]*Action
-	KeyEthDst            *[]byte
-	KeyEthSrc            *[]byte
+	KeyEthDst            *net.HardwareAddr
+	KeyEthSrc            *net.HardwareAddr
 	KeyEthType           *uint16
 	KeyIPProto           *uint8
 	KeyIPv4Src           *net.IP
@@ -187,10 +187,10 @@ func unmarshalFlower(data []byte, info *Flower) error {
 			}
 			info.Actions = actions
 		case tcaFlowerKeyEthDst:
-			tmp := ad.Bytes()
+			tmp := net.HardwareAddr(ad.Bytes())
 			info.KeyEthDst = &tmp
 		case tcaFlowerKeyEthSrc:
-			tmp := ad.Bytes()
+			tmp := net.HardwareAddr(ad.Bytes())
 			info.KeyEthSrc = &tmp
 		case tcaFlowerKeyEthType:
 			tmp := ad.Uint16()
@@ -399,16 +399,18 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerAct, Data: data})
 	}
 	if info.KeyEthDst != nil {
-		if len(*info.KeyEthDst) != 6 {
+		tmp := []byte(*info.KeyEthDst)
+		if len(tmp) != 6 {
 			return []byte{}, fmt.Errorf("invalid length for EthDst")
 		}
-		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthDst, Data: *info.KeyEthDst})
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthDst, Data: tmp})
 	}
 	if info.KeyEthSrc != nil {
-		if len(*info.KeyEthSrc) != 6 {
+		tmp := []byte(*info.KeyEthSrc)
+		if len(tmp) != 6 {
 			return []byte{}, fmt.Errorf("invalid length for EthSrc")
 		}
-		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthSrc, Data: *info.KeyEthSrc})
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthSrc, Data: tmp})
 	}
 	if info.KeyEthType != nil {
 		options = append(options, tcOption{Interpretation: vtUint16Be, Type: tcaFlowerKeyEthType, Data: *info.KeyEthType})
