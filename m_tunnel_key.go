@@ -30,7 +30,7 @@ type TunnelKey struct {
 	Tm              *Tcft
 	KeyEncIPv4Src   *net.IP
 	KeyEncIPv4Dst   *net.IP
-	KeyEncKeyID     *uint64
+	KeyEncKeyID     *uint32
 	KeyEncDstPort   *uint16
 	KeyNoCSUM       *uint8
 	KeyEncTOS       *uint8
@@ -76,7 +76,7 @@ func marshalTunnelKey(info *TunnelKey) ([]byte, error) {
 		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaTunnelKeyEncIPv4Dst, Data: tmp})
 	}
 	if info.KeyEncKeyID != nil {
-		options = append(options, tcOption{Interpretation: vtUint64Be, Type: tcaTunnelKeyEncKeyID, Data: *info.KeyEncKeyID})
+		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaTunnelKeyEncKeyID, Data: *info.KeyEncKeyID})
 	}
 	if info.KeyEncDstPort != nil {
 		options = append(options, tcOption{Interpretation: vtUint16Be, Type: tcaTunnelKeyEncDstPort, Data: *info.KeyEncDstPort})
@@ -122,7 +122,7 @@ func unmarshalTunnelKey(data []byte, info *TunnelKey) error {
 			tmp := uint32ToIP(ad.Uint32())
 			info.KeyEncIPv4Dst = &tmp
 		case tcaTunnelKeyEncKeyID:
-			tmp := ad.Uint64()
+			tmp := ad.Uint32()
 			info.KeyEncKeyID = &tmp
 		case tcaTunnelKeyEncDstPort:
 			tmp := ad.Uint16()
