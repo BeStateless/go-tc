@@ -107,21 +107,22 @@ type Flower struct {
 	KeyEthType           *uint16
 	KeyIPProto           *uint8
 	KeyIPv4Src           *net.IP
-	KeyIPv4SrcMask       *net.IP
+	KeyIPv4SrcMask       *net.IPMask
 	KeyIPv4Dst           *net.IP
-	KeyIPv4DstMask       *net.IP
+	KeyIPv4DstMask       *net.IPMask
 	KeyTCPSrc            *uint16
 	KeyTCPDst            *uint16
 	KeyUDPSrc            *uint16
 	KeyUDPDst            *uint16
+	Flags                *uint32
 	KeyVlanID            *uint16
 	KeyVlanPrio          *uint8
 	KeyVlanEthType       *uint16
 	KeyEncKeyID          *uint32
 	KeyEncIPv4Src        *net.IP
-	KeyEncIPv4SrcMask    *net.IP
+	KeyEncIPv4SrcMask    *net.IPMask
 	KeyEncIPv4Dst        *net.IP
-	KeyEncIPv4DstMask    *net.IP
+	KeyEncIPv4DstMask    *net.IPMask
 	KeyTCPSrcMask        *uint16
 	KeyTCPDstMask        *uint16
 	KeyUDPSrcMask        *uint16
@@ -163,6 +164,7 @@ type Flower struct {
 	KeyEncIPTOSMask      *uint8
 	KeyEncIPTTL          *uint8
 	KeyEncIPTTLMask      *uint8
+	InHwCount            *uint32
 }
 
 // unmarshalFlower parses the Flower-encoded data and stores the result in the value pointed to by info.
@@ -202,13 +204,13 @@ func unmarshalFlower(data []byte, info *Flower) error {
 			tmp := uint32ToIP(ad.Uint32())
 			info.KeyIPv4Src = &tmp
 		case tcaFlowerKeyIPv4SrcMask:
-			tmp := uint32ToIP(ad.Uint32())
+			tmp := uint32ToIPMask(ad.Uint32())
 			info.KeyIPv4SrcMask = &tmp
 		case tcaFlowerKeyIPv4Dst:
 			tmp := uint32ToIP(ad.Uint32())
 			info.KeyIPv4Dst = &tmp
 		case tcaFlowerKeyIPv4DstMask:
-			tmp := uint32ToIP(ad.Uint32())
+			tmp := uint32ToIPMask(ad.Uint32())
 			info.KeyIPv4DstMask = &tmp
 		case tcaFlowerKeyTCPSrc:
 			tmp := ad.Uint16()
@@ -222,6 +224,9 @@ func unmarshalFlower(data []byte, info *Flower) error {
 		case tcaFlowerKeyUDPDst:
 			tmp := ad.Uint16()
 			info.KeyUDPDst = &tmp
+		case tcaFlowerFlags:
+			tmp := ad.Uint32()
+			info.Flags = &tmp
 		case tcaFlowerKeyVlanID:
 			tmp := ad.Uint16()
 			info.KeyVlanID = &tmp
@@ -238,13 +243,13 @@ func unmarshalFlower(data []byte, info *Flower) error {
 			tmp := uint32ToIP(ad.Uint32())
 			info.KeyEncIPv4Src = &tmp
 		case tcaFlowerKeyEncIPv4SrcMask:
-			tmp := uint32ToIP(ad.Uint32())
+			tmp := uint32ToIPMask(ad.Uint32())
 			info.KeyEncIPv4SrcMask = &tmp
 		case tcaFlowerKeyEncIPv4Dst:
 			tmp := uint32ToIP(ad.Uint32())
 			info.KeyEncIPv4Dst = &tmp
 		case tcaFlowerKeyEncIPv4DstMask:
-			tmp := uint32ToIP(ad.Uint32())
+			tmp := uint32ToIPMask(ad.Uint32())
 			info.KeyEncIPv4DstMask = &tmp
 		case tcaFlowerKeyTCPSrcMask:
 			tmp := ad.Uint16()
@@ -369,6 +374,9 @@ func unmarshalFlower(data []byte, info *Flower) error {
 		case tcaFlowerKeyEncIPTTLMask:
 			tmp := ad.Uint8()
 			info.KeyEncIPTTLMask = &tmp
+		case tcaFlowerInHwCount:
+			tmp := ad.Uint32()
+			info.InHwCount = &tmp
 		default:
 			return fmt.Errorf("unmarshalFlower()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
@@ -426,7 +434,7 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyIPv4Src, Data: tmp})
 	}
 	if info.KeyIPv4SrcMask != nil {
-		tmp, err := ipToUint32(*info.KeyIPv4SrcMask)
+		tmp, err := ipMaskToUint32(*info.KeyIPv4SrcMask)
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyIPv4SrcMask: %w", err)
 		}
@@ -440,7 +448,7 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyIPv4Dst, Data: tmp})
 	}
 	if info.KeyIPv4DstMask != nil {
-		tmp, err := ipToUint32(*info.KeyIPv4DstMask)
+		tmp, err := ipMaskToUint32(*info.KeyIPv4DstMask)
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyIPv4DstMask: %w", err)
 		}
@@ -457,6 +465,9 @@ func marshalFlower(info *Flower) ([]byte, error) {
 	}
 	if info.KeyUDPDst != nil {
 		options = append(options, tcOption{Interpretation: vtUint16Be, Type: tcaFlowerKeyUDPDst, Data: *info.KeyUDPDst})
+	}
+	if info.Flags != nil {
+		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaFlowerFlags, Data: *info.Flags})
 	}
 	if info.KeyVlanID != nil {
 		options = append(options, tcOption{Interpretation: vtUint16, Type: tcaFlowerKeyVlanID, Data: *info.KeyVlanID})
@@ -478,7 +489,7 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyEncIPv4Src, Data: tmp})
 	}
 	if info.KeyEncIPv4SrcMask != nil {
-		tmp, err := ipToUint32(*info.KeyEncIPv4SrcMask)
+		tmp, err := ipMaskToUint32(*info.KeyEncIPv4SrcMask)
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyEncIPv4SrcMask: %w", err)
 		}
@@ -492,7 +503,7 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyEncIPv4Dst, Data: tmp})
 	}
 	if info.KeyEncIPv4DstMask != nil {
-		tmp, err := ipToUint32(*info.KeyEncIPv4DstMask)
+		tmp, err := ipMaskToUint32(*info.KeyEncIPv4DstMask)
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyEncIPv4DstMask: %w", err)
 		}
@@ -620,6 +631,9 @@ func marshalFlower(info *Flower) ([]byte, error) {
 	}
 	if info.KeyEncIPTTLMask != nil {
 		options = append(options, tcOption{Interpretation: vtUint8, Type: tcaFlowerKeyEncIPTTLMask, Data: *info.KeyEncIPTTLMask})
+	}
+	if info.InHwCount != nil {
+		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaFlowerInHwCount, Data: *info.InHwCount})
 	}
 	return marshalAttributes(options)
 }
