@@ -191,13 +191,6 @@ func unmarshalFlower(data []byte, info *Flower) error {
 			}
 			info.Actions = actions
 		case tcaFlowerKeyEthDst:
-<<<<<<< HEAD
-			tmp := net.HardwareAddr(ad.Bytes())
-			info.KeyEthDst = &tmp
-		case tcaFlowerKeyEthSrc:
-			tmp := net.HardwareAddr(ad.Bytes())
-			info.KeyEthSrc = &tmp
-=======
 			tmp := bytesToHardwareAddr(ad.Bytes())
 			info.KeyEthDst = &tmp
 		case tcaFlowerKeyEthDstMask:
@@ -209,7 +202,6 @@ func unmarshalFlower(data []byte, info *Flower) error {
 		case tcaFlowerKeyEthSrcMask:
 			tmp := bytesToHardwareAddr(ad.Bytes())
 			info.KeyEthSrcMask = &tmp
->>>>>>> 50c428657f96e3c4df09273934a34cfbca555fcd
 		case tcaFlowerKeyEthType:
 			tmp := ad.Uint16()
 			info.KeyEthType = &tmp
@@ -423,21 +415,6 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerAct, Data: data})
 	}
 	if info.KeyEthDst != nil {
-<<<<<<< HEAD
-		tmp := []byte(*info.KeyEthDst)
-		if len(tmp) != 6 {
-			return []byte{}, fmt.Errorf("invalid length for EthDst")
-		}
-		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthDst, Data: tmp})
-	}
-	if info.KeyEthSrc != nil {
-		tmp := []byte(*info.KeyEthSrc)
-		if len(tmp) != 6 {
-			return []byte{}, fmt.Errorf("invalid length for EthSrc")
-		}
-		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthSrc, Data: tmp})
-	}
-=======
 		tmp := hardwareAddrToBytes(*info.KeyEthDst)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthDst, Data: tmp})
 	}
@@ -453,7 +430,6 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		tmp := hardwareAddrToBytes(*info.KeyEthSrcMask)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthSrcMask, Data: tmp})
 	}
->>>>>>> 50c428657f96e3c4df09273934a34cfbca555fcd
 	if info.KeyEthType != nil {
 		options = append(options, tcOption{Interpretation: vtUint16Be, Type: tcaFlowerKeyEthType, Data: *info.KeyEthType})
 	}
