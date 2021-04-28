@@ -91,11 +91,8 @@ func unmarshalAction(data []byte, info *Action) error {
 		case tcaActOptions:
 			actOptions = ad.Bytes()
 		case tcaActCookie:
-			cookie := &Cookie{}
-			if err := unmarshalStruct(ad.Bytes(), cookie); err != nil {
-				return err
-			}
-			info.Cookie = cookie
+			tmp := ad.Bytes()
+			info.Cookie = &tmp
 		case tcaActStats:
 			stats := &GenStats{}
 			if err := unmarshalGenStats(ad.Bytes(), stats); err != nil {
@@ -169,6 +166,12 @@ func marshalAction(info *Action) ([]byte, error) {
 			return []byte{}, err
 		}
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaActOptions, Data: data})
+	case "gate":
+		data, err := marshalGate(info.Gate)
+		if err != nil {
+			return []byte{}, err
+		}
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaActOptions, Data: data})
 	case "ife":
 		data, err := marshalIfe(info.Ife)
 		if err != nil {
@@ -238,13 +241,10 @@ func marshalAction(info *Action) ([]byte, error) {
 		}
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaActStats, Data: data})
 	}
+	if info.Cookie != nil {
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaActCookie, Data: bytesValue(info.Cookie)})
+	}
 	return marshalAttributes(options)
-}
-
-// Cookie is passed from user to the kernel for actions and classifiers
-type Cookie struct {
-	Data uint8
-	Len  uint32
 }
 
 func extractActOptions(data []byte, act *Action, kind string) error {
@@ -273,6 +273,12 @@ func extractActOptions(data []byte, act *Action, kind string) error {
 			return err
 		}
 		act.Defact = info
+	case "gate":
+		info := &Gate{}
+		if err := unmarshalGate(data, info); err != nil {
+			return err
+		}
+		act.Gate = info
 	case "ife":
 		info := &Ife{}
 		if err := unmarshalIfe(data, info); err != nil {

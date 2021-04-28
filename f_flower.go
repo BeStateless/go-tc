@@ -103,7 +103,9 @@ type Flower struct {
 	Indev                *string
 	Actions              *[]*Action
 	KeyEthDst            *net.HardwareAddr
+	KeyEthDstMask        *net.HardwareAddr
 	KeyEthSrc            *net.HardwareAddr
+	KeyEthSrcMask        *net.HardwareAddr
 	KeyEthType           *uint16
 	KeyIPProto           *uint8
 	KeyIPv4Src           *net.IP
@@ -189,11 +191,25 @@ func unmarshalFlower(data []byte, info *Flower) error {
 			}
 			info.Actions = actions
 		case tcaFlowerKeyEthDst:
+<<<<<<< HEAD
 			tmp := net.HardwareAddr(ad.Bytes())
 			info.KeyEthDst = &tmp
 		case tcaFlowerKeyEthSrc:
 			tmp := net.HardwareAddr(ad.Bytes())
 			info.KeyEthSrc = &tmp
+=======
+			tmp := bytesToHardwareAddr(ad.Bytes())
+			info.KeyEthDst = &tmp
+		case tcaFlowerKeyEthDstMask:
+			tmp := bytesToHardwareAddr(ad.Bytes())
+			info.KeyEthDstMask = &tmp
+		case tcaFlowerKeyEthSrc:
+			tmp := bytesToHardwareAddr(ad.Bytes())
+			info.KeyEthSrc = &tmp
+		case tcaFlowerKeyEthSrcMask:
+			tmp := bytesToHardwareAddr(ad.Bytes())
+			info.KeyEthSrcMask = &tmp
+>>>>>>> 50c428657f96e3c4df09273934a34cfbca555fcd
 		case tcaFlowerKeyEthType:
 			tmp := ad.Uint16()
 			info.KeyEthType = &tmp
@@ -407,6 +423,7 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerAct, Data: data})
 	}
 	if info.KeyEthDst != nil {
+<<<<<<< HEAD
 		tmp := []byte(*info.KeyEthDst)
 		if len(tmp) != 6 {
 			return []byte{}, fmt.Errorf("invalid length for EthDst")
@@ -420,6 +437,23 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		}
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthSrc, Data: tmp})
 	}
+=======
+		tmp := hardwareAddrToBytes(*info.KeyEthDst)
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthDst, Data: tmp})
+	}
+	if info.KeyEthDstMask != nil {
+		tmp := hardwareAddrToBytes(*info.KeyEthDstMask)
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthDstMask, Data: tmp})
+	}
+	if info.KeyEthSrc != nil {
+		tmp := hardwareAddrToBytes(*info.KeyEthSrc)
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthSrc, Data: tmp})
+	}
+	if info.KeyEthSrcMask != nil {
+		tmp := hardwareAddrToBytes(*info.KeyEthSrcMask)
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaFlowerKeyEthSrcMask, Data: tmp})
+	}
+>>>>>>> 50c428657f96e3c4df09273934a34cfbca555fcd
 	if info.KeyEthType != nil {
 		options = append(options, tcOption{Interpretation: vtUint16Be, Type: tcaFlowerKeyEthType, Data: *info.KeyEthType})
 	}

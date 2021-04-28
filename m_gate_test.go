@@ -2,48 +2,37 @@ package tc
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestBasic(t *testing.T) {
+func TestGate(t *testing.T) {
 	tests := map[string]struct {
-		val  Basic
+		val  Gate
 		err1 error
 		err2 error
 	}{
-		"simple": {val: Basic{ClassID: uint32Ptr(2)}},
-		"with ematch": {val: Basic{ClassID: uint32Ptr(3),
-			Ematch: &Ematch{
-				Hdr: &EmatchTreeHdr{NMatches: 1},
-				Matches: &[]EmatchMatch{
-					{Hdr: EmatchHdr{MatchID: 0x0, Kind: EmatchU32, Flags: 0x0, Pad: 0x0},
-						// match 'u32(u16 0x1122 0xffff at nexthdr+4)'
-						U32Match: &U32Match{
-							Mask:    0xffff,
-							Value:   0x1122,
-							Off:     0x400,
-							OffMask: 0xffff,
-						},
-					},
-				},
-			},
-		},
-		},
+		"empty": {err1: fmt.Errorf("Gate options are missing")},
+		"all options": {val: Gate{Parms: &GateParms{Index: 1}, Priority: int32Ptr(2),
+			BaseTime: uint64Ptr(3), CycleTime: uint64Ptr(4), CycleTimeExt: uint64Ptr(5),
+			Flags: uint32Ptr(6), ClockID: int32Ptr(-7)}},
 	}
 
 	for name, testcase := range tests {
 		t.Run(name, func(t *testing.T) {
-			data, err1 := marshalBasic(&testcase.val)
+			data, err1 := marshalGate(&testcase.val)
 			if err1 != nil {
 				if testcase.err1 != nil && testcase.err1.Error() == err1.Error() {
 					return
 				}
 				t.Fatalf("Unexpected error: %v", err1)
 			}
-			val := Basic{}
-			err2 := unmarshalBasic(data, &val)
+			newData, tm := injectTcft(t, data, tcaSampleTm)
+			newData = injectAttribute(t, newData, []byte{}, tcaGatePad)
+			val := Gate{}
+			err2 := unmarshalGate(newData, &val)
 			if err2 != nil {
 				if testcase.err2 != nil && testcase.err2.Error() == err2.Error() {
 					return
@@ -51,20 +40,21 @@ func TestBasic(t *testing.T) {
 				t.Fatalf("Unexpected error: %v", err2)
 
 			}
+			testcase.val.Tm = tm
 			if diff := cmp.Diff(val, testcase.val); diff != "" {
-				t.Fatalf("Basic missmatch (want +got):\n%s", diff)
+				t.Fatalf("Gate missmatch (want +got):\n%s", diff)
 			}
 		})
 	}
 	t.Run("marshal(nil)", func(t *testing.T) {
-		_, err := marshalBasic(nil)
+		_, err := marshalGate(nil)
 		if !errors.Is(err, ErrNoArg) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 	t.Run("unmarshal(0x0)", func(t *testing.T) {
-		val := Basic{}
-		if err := unmarshalBasic([]byte{0x00}, &val); err == nil {
+		val := Gate{}
+		if err := unmarshalGate([]byte{0x00}, &val); err == nil {
 			t.Fatalf("expected error but got nil")
 		}
 	})

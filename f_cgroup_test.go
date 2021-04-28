@@ -7,15 +7,21 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestFlow(t *testing.T) {
+func TestCgroup(t *testing.T) {
 	tests := map[string]struct {
-		val  Flow
+		val  Cgroup
 		err1 error
 		err2 error
 	}{
-		"simple": {val: Flow{Keys: uint32Ptr(12), Mode: uint32Ptr(34), BaseClass: uint32Ptr(56), RShift: uint32Ptr(78),
-			Addend: uint32Ptr(90), Mask: uint32Ptr(21), XOR: uint32Ptr(43), Divisor: uint32Ptr(65), PerTurb: uint32Ptr(87)}},
-		"with ematch": {val: Flow{
+		"simple": {val: Cgroup{Action: &Action{
+			Kind: "sample",
+			Sample: &Sample{
+				Rate:        uint32Ptr(1),
+				TruncSize:   uint32Ptr(2),
+				SampleGroup: uint32Ptr(3),
+			},
+		}}},
+		"with ematch": {val: Cgroup{
 			Ematch: &Ematch{
 				Hdr: &EmatchTreeHdr{NMatches: 1},
 				Matches: &[]EmatchMatch{
@@ -34,15 +40,15 @@ func TestFlow(t *testing.T) {
 
 	for name, testcase := range tests {
 		t.Run(name, func(t *testing.T) {
-			data, err1 := marshalFlow(&testcase.val)
+			data, err1 := marshalCgroup(&testcase.val)
 			if err1 != nil {
 				if testcase.err1 != nil && testcase.err1.Error() == err1.Error() {
 					return
 				}
 				t.Fatalf("Unexpected error: %v", err1)
 			}
-			val := Flow{}
-			err2 := unmarshalFlow(data, &val)
+			val := Cgroup{}
+			err2 := unmarshalCgroup(data, &val)
 			if err2 != nil {
 				if testcase.err2 != nil && testcase.err2.Error() == err2.Error() {
 					return
@@ -51,15 +57,20 @@ func TestFlow(t *testing.T) {
 
 			}
 			if diff := cmp.Diff(val, testcase.val); diff != "" {
-				t.Fatalf("Flow missmatch (want +got):\n%s", diff)
+				t.Fatalf("Cgroup missmatch (want +got):\n%s", diff)
 			}
 		})
 	}
-
-	t.Run("nil", func(t *testing.T) {
-		_, err := marshalFlow(nil)
+	t.Run("marshal(nil)", func(t *testing.T) {
+		_, err := marshalCgroup(nil)
 		if !errors.Is(err, ErrNoArg) {
 			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+	t.Run("unmarshal(0x0)", func(t *testing.T) {
+		val := Cgroup{}
+		if err := unmarshalCgroup([]byte{0x00}, &val); err == nil {
+			t.Fatalf("expected error but got nil")
 		}
 	})
 }

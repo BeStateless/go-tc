@@ -23,6 +23,10 @@ func TestFlower(t *testing.T) {
 			ClassID:              uint32Ptr(1),
 			Indev:                stringPtr("foo"),
 			Actions:              &actions,
+			KeyEthDst:            netHardwareAddrPtr(net.HardwareAddr([]byte("00:00:5e:00:53:01"))),
+			KeyEthDstMask:        netHardwareAddrPtr(net.HardwareAddr([]byte("00:01:5e:00:53:02"))),
+			KeyEthSrc:            netHardwareAddrPtr(net.HardwareAddr([]byte("00:02:5e:00:53:03"))),
+			KeyEthSrcMask:        netHardwareAddrPtr(net.HardwareAddr([]byte("00:03:5e:00:53:04"))),
 			KeyEthType:           uint16Ptr(2),
 			KeyIPProto:           uint8Ptr(3),
 			KeyIPv4Src:           netIPPtr(net.ParseIP("1.2.3.4")),
@@ -97,7 +101,6 @@ func TestFlower(t *testing.T) {
 	endianessMix[tcaFlowerKeyTCPDst] = vtUint16Be
 	endianessMix[tcaFlowerKeyUDPSrc] = vtUint16Be
 	endianessMix[tcaFlowerKeyUDPDst] = vtUint16Be
-	endianessMix[tcaFlowerKeyVlanID] = vtUint16Be
 	endianessMix[tcaFlowerKeyVlanEthType] = vtUint16Be
 	endianessMix[tcaFlowerKeyEncKeyID] = vtUint32Be
 	endianessMix[tcaFlowerKeyEncIPv4Src] = vtUint32Be
@@ -124,7 +127,6 @@ func TestFlower(t *testing.T) {
 	endianessMix[tcaFlowerKeyArpTIPMask] = vtUint32Be
 	endianessMix[tcaFlowerKeyTCPFlags] = vtUint16Be
 	endianessMix[tcaFlowerKeyTCPFlagsMask] = vtUint16Be
-	endianessMix[tcaFlowerKeyCVlanID] = vtUint16Be
 	endianessMix[tcaFlowerKeyCVlanEthType] = vtUint16Be
 
 	for name, testcase := range tests {

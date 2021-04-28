@@ -26,24 +26,24 @@ const (
 
 // TunnelKey contains attribute of the TunnelKey discipline
 type TunnelKey struct {
-	Parms           *TunnelParms
-	Tm              *Tcft
-	KeyEncIPv4Src   *net.IP
-	KeyEncIPv4Dst   *net.IP
-	KeyEncKeyID     *uint32
-	KeyEncDstPort   *uint16
-	KeyNoCSUM       *uint8
-	KeyEncTOS       *uint8
-	KeyEncTTL       *uint8
+	Parms         *TunnelParms
+	Tm            *Tcft
+	KeyEncSrc     *net.IP
+	KeyEncDst     *net.IP
+	KeyEncKeyID   *uint32
+	KeyEncDstPort *uint16
+	KeyNoCSUM     *uint8
+	KeyEncTOS     *uint8
+	KeyEncTTL     *uint8
 }
 
 // TunnelParms from from include/uapi/linux/tc_act/tc_tunnel_key.h
 type TunnelParms struct {
-	Index        uint32
-	Capab        uint32
-	Action       uint32
-	RefCnt       uint32
-	BindCnt      uint32
+	Index           uint32
+	Capab           uint32
+	Action          uint32
+	RefCnt          uint32
+	BindCnt         uint32
 	TunnelKeyAction uint32
 }
 
@@ -61,19 +61,29 @@ func marshalTunnelKey(info *TunnelKey) ([]byte, error) {
 		}
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaTunnelKeyParms, Data: data})
 	}
-	if info.KeyEncIPv4Src != nil {
-		tmp, err := ipToUint32(*info.KeyEncIPv4Src)
-		if err != nil {
-			return []byte{}, fmt.Errorf("TunnelKey - KeyEncIPv4Src: %w", err)
+	if info.KeyEncSrc != nil {
+		if info.KeyEncSrc.To4() != nil {
+			tmp, err := ipToUint32(*info.KeyEncSrc)
+			if err != nil {
+				return []byte{}, fmt.Errorf("TunnelKey - KeyEncIPv4Src: %w", err)
+			}
+			options = append(options, tcOption{Interpretation: vtUint32, Type: tcaTunnelKeyEncIPv4Src, Data: tmp})
+		} else {
+			tmp := ipToBytes(*info.KeyEncSrc)
+			options = append(options, tcOption{Interpretation: vtBytes, Type: tcaTunnelKeyEncIPv6Src, Data: tmp})
 		}
-		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaTunnelKeyEncIPv4Src, Data: tmp})
 	}
-	if info.KeyEncIPv4Dst != nil {
-		tmp, err := ipToUint32(*info.KeyEncIPv4Dst)
-		if err != nil {
-			return []byte{}, fmt.Errorf("TunnelKey - KeyEncIPv4Dst: %w", err)
+	if info.KeyEncDst != nil {
+		if info.KeyEncDst.To4() != nil {
+			tmp, err := ipToUint32(*info.KeyEncDst)
+			if err != nil {
+				return []byte{}, fmt.Errorf("TunnelKey - KeyEncIPv4Src: %w", err)
+			}
+			options = append(options, tcOption{Interpretation: vtUint32, Type: tcaTunnelKeyEncIPv4Dst, Data: tmp})
+		} else {
+			tmp := ipToBytes(*info.KeyEncSrc)
+			options = append(options, tcOption{Interpretation: vtBytes, Type: tcaTunnelKeyEncIPv6Dst, Data: tmp})
 		}
-		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaTunnelKeyEncIPv4Dst, Data: tmp})
 	}
 	if info.KeyEncKeyID != nil {
 		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaTunnelKeyEncKeyID, Data: *info.KeyEncKeyID})
@@ -117,10 +127,22 @@ func unmarshalTunnelKey(data []byte, info *TunnelKey) error {
 			info.Parms = parms
 		case tcaTunnelKeyEncIPv4Src:
 			tmp := uint32ToIP(ad.Uint32())
-			info.KeyEncIPv4Src = &tmp
+			info.KeyEncSrc = &tmp
 		case tcaTunnelKeyEncIPv4Dst:
 			tmp := uint32ToIP(ad.Uint32())
-			info.KeyEncIPv4Dst = &tmp
+			info.KeyEncDst = &tmp
+		case tcaTunnelKeyEncIPv6Src:
+			tmp, err := bytesToIP(ad.Bytes())
+			if err != nil {
+				return err
+			}
+			info.KeyEncSrc = &tmp
+		case tcaTunnelKeyEncIPv6Dst:
+			tmp, err := bytesToIP(ad.Bytes())
+			if err != nil {
+				return err
+			}
+			info.KeyEncDst = &tmp
 		case tcaTunnelKeyEncKeyID:
 			tmp := ad.Uint32()
 			info.KeyEncKeyID = &tmp
