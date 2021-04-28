@@ -39,23 +39,24 @@ const (
 
 // Action represents action attributes of various filters and classes
 type Action struct {
-	Kind        string
-	Index       uint32
-	Stats       *GenStats
-	Cookie      *Cookie
-	Bpf         *ActBpf
-	ConnMark    *Connmark
-	CSum        *Csum
-	Defact      *Defact
-	Ife         *Ife
-	Ipt         *Ipt
-	Mirred      *Mirred
-	Nat         *Nat
-	Sample      *Sample
-	VLan        *VLan
-	Police      *Police
-	TunnelKey   *TunnelKey
-	Gact        *Gact
+	Kind      string
+	Index     uint32
+	Stats     *GenStats
+	Cookie    *[]byte
+	Bpf       *ActBpf
+	ConnMark  *Connmark
+	CSum      *Csum
+	Defact    *Defact
+	Gate      *Gate
+	Ife       *Ife
+	Ipt       *Ipt
+	Mirred    *Mirred
+	Nat       *Nat
+	Sample    *Sample
+	VLan      *VLan
+	Police    *Police
+	TunnelKey *TunnelKey
+	Gact      *Gact
 }
 
 func unmarshalActions(data []byte, actions *[]*Action) error {
