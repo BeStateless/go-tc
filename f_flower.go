@@ -441,7 +441,7 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyIPv4Src: %w", err)
 		}
-		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyIPv4Src, Data: tmp})
+		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaFlowerKeyIPv4Src, Data: tmp})
 	}
 	if info.KeyIPv4SrcMask != nil {
 		tmp, err := ipMaskToUint32(*info.KeyIPv4SrcMask)
@@ -496,28 +496,28 @@ func marshalFlower(info *Flower) ([]byte, error) {
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyEncIPv4Src: %w", err)
 		}
-		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyEncIPv4Src, Data: tmp})
+		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaFlowerKeyEncIPv4Src, Data: tmp})
 	}
 	if info.KeyEncIPv4SrcMask != nil {
 		tmp, err := ipMaskToUint32(*info.KeyEncIPv4SrcMask)
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyEncIPv4SrcMask: %w", err)
 		}
-		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyEncIPv4SrcMask, Data: tmp})
+		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaFlowerKeyEncIPv4SrcMask, Data: tmp})
 	}
 	if info.KeyEncIPv4Dst != nil {
 		tmp, err := ipToUint32(*info.KeyEncIPv4Dst)
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyEncIPv4Dst: %w", err)
 		}
-		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyEncIPv4Dst, Data: tmp})
+		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaFlowerKeyEncIPv4Dst, Data: tmp})
 	}
 	if info.KeyEncIPv4DstMask != nil {
 		tmp, err := ipMaskToUint32(*info.KeyEncIPv4DstMask)
 		if err != nil {
 			return []byte{}, fmt.Errorf("Flower - KeyEncIPv4DstMask: %w", err)
 		}
-		options = append(options, tcOption{Interpretation: vtUint32Be, Type: tcaFlowerKeyEncIPv4DstMask, Data: tmp})
+		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaFlowerKeyEncIPv4DstMask, Data: tmp})
 	}
 	if info.KeyTCPSrcMask != nil {
 		options = append(options, tcOption{Interpretation: vtUint16Be, Type: tcaFlowerKeyTCPSrcMask, Data: *info.KeyTCPSrcMask})
