@@ -2,6 +2,7 @@ package tc
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/mdlayher/netlink"
 )
@@ -103,7 +104,9 @@ func unmarshalAction(data []byte, info *Action) error {
 		case tcaActPad:
 			// padding does not contain data, we just skip it
 		default:
-			return fmt.Errorf("unmarshalAction()\t%d\n\t%v", ad.Type(), ad.Bytes())
+			// Igore and keep going if an unknown type is parsed.
+			// TODO: this Fprintln should be logging if we actually need to log this. Logging might be excessive and it's not known if this is important info.
+			fmt.Fprintln(os.Stderr, "unmarshalAction() ignoring data with unknown type:", ad.Type(), ad.Bytes())
 		}
 	}
 	if len(actOptions) > 0 {
