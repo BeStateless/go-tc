@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/dennisafa/go-tc/core"
-	"github.com/dennisafa/go-tc/internal/unix"
+	"github.com/bestateless/go-tc/core"
+	"github.com/bestateless/go-tc/internal/unix"
 )
 
 func TestChain(t *testing.T) {

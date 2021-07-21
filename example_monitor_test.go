@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dennisafa/go-tc"
+	"github.com/bestateless/go-tc"
 )
 
 // This example demonstrates how Monitor() can be used
