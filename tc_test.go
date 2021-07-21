@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dennisafa/go-tc/internal/unix"
+	"github.com/florianl/go-tc/internal/unix"
 	"github.com/google/go-cmp/cmp"
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nltest"
