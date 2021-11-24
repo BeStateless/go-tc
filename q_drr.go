@@ -22,7 +22,6 @@ func unmarshalDrr(data []byte, info *Drr) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaDrrQuantum:
@@ -31,7 +30,7 @@ func unmarshalDrr(data []byte, info *Drr) error {
 			return fmt.Errorf("UnmarshalDrr()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return nil
+	return ad.Err()
 }
 
 // marshalDrr returns the binary encoding of Qfq

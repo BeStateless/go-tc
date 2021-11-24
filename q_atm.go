@@ -30,7 +30,6 @@ func unmarshalAtm(data []byte, info *Atm) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaAtmFD:
@@ -50,7 +49,7 @@ func unmarshalAtm(data []byte, info *Atm) error {
 
 		}
 	}
-	return nil
+	return ad.Err()
 }
 
 // marshalAtm returns the binary encoding of Atm

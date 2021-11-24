@@ -34,20 +34,18 @@ func unmarshalConnmark(data []byte, info *Connmark) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaConnmarkParms:
 			param := &ConnmarkParam{}
-			if err := unmarshalStruct(ad.Bytes(), param); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), param)
+			concatError(multiError, err)
 			info.Parms = param
 		case tcaConnmarkTm:
 			tm := &Tcft{}
-			if err := unmarshalStruct(ad.Bytes(), tm); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), tm)
+			concatError(multiError, err)
 			info.Tm = tm
 		case tcaConnmarkPad:
 			// padding does not contain data, we just skip it
@@ -55,7 +53,7 @@ func unmarshalConnmark(data []byte, info *Connmark) error {
 			return fmt.Errorf("unmarshalConnmark()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return nil
+	return concatError(multiError, ad.Err())
 }
 
 // marshalConnmark returns the binary encoding of ActBpf

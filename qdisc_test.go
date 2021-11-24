@@ -38,6 +38,7 @@ func TestQdisc(t *testing.T) {
 		fqCodel *FqCodel
 		red     *Red
 		sfb     *Sfb
+		sfq     *Sfq
 		cbq     *Cbq
 		codel   *Codel
 		hhf     *Hhf
@@ -46,6 +47,8 @@ func TestQdisc(t *testing.T) {
 		netem   *Netem
 		cake    *Cake
 		htb     *Htb
+		prio    *Prio
+		plug    *Plug
 	}{
 		"clsact":   {kind: "clsact"},
 		"emptyHtb": {kind: "htb", err: ErrNoArg},
@@ -53,6 +56,11 @@ func TestQdisc(t *testing.T) {
 			fqCodel: &FqCodel{Target: uint32Ptr(42), Limit: uint32Ptr(0xCAFE)}},
 		"red": {kind: "red", red: &Red{MaxP: uint32Ptr(42)}},
 		"sfb": {kind: "sfb", sfb: &Sfb{Parms: &SfbQopt{Max: 0xFF}}},
+		"sfq": {kind: "sfq", sfq: &Sfq{V0: SfqQopt{
+			PerturbPeriod: 64,
+			Limit:         3000,
+			Flows:         512,
+		}}},
 		"cbq": {kind: "cbq", cbq: &Cbq{LssOpt: &CbqLssOpt{OffTime: 10}, WrrOpt: &CbqWrrOpt{Weight: 42},
 			FOpt: &CbqFOpt{Split: 2}, OVLStrategy: &CbqOvl{Penalty: 2}}},
 		"codel": {kind: "codel", codel: &Codel{Target: uint32Ptr(1), Limit: uint32Ptr(2), Interval: uint32Ptr(3),
@@ -65,6 +73,9 @@ func TestQdisc(t *testing.T) {
 		"netem": {kind: "netem", netem: &Netem{Ecn: uint32Ptr(64)}},
 		"cake":  {kind: "cake", cake: &Cake{BaseRate: uint64Ptr(128)}},
 		"htb":   {kind: "htb", htb: &Htb{Rate64: uint64Ptr(96)}},
+		"prio": {kind: "prio", prio: &Prio{Bands: 3,
+			PrioMap: [16]uint8{1, 2, 2, 2, 1, 2, 9, 9, 1, 1, 1, 1, 1, 1, 1, 1}}},
+		"plug": {kind: "plug", plug: &Plug{Action: PlugReleaseIndefinite}},
 	}
 
 	tcMsg := Msg{
@@ -84,6 +95,7 @@ func TestQdisc(t *testing.T) {
 					FqCodel: testcase.fqCodel,
 					Red:     testcase.red,
 					Sfb:     testcase.sfb,
+					Sfq:     testcase.sfq,
 					Cbq:     testcase.cbq,
 					Codel:   testcase.codel,
 					Hhf:     testcase.hhf,
@@ -92,6 +104,8 @@ func TestQdisc(t *testing.T) {
 					Netem:   testcase.netem,
 					Cake:    testcase.cake,
 					Htb:     testcase.htb,
+					Prio:    testcase.prio,
+					Plug:    testcase.plug,
 				},
 			}
 

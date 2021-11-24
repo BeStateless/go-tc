@@ -49,26 +49,23 @@ func unmarshalPolice(data []byte, info *Police) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaPoliceTbf:
 			policy := &Policy{}
-			if err := unmarshalStruct(ad.Bytes(), policy); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), policy)
+			concatError(multiError, err)
 			info.Tbf = policy
 		case tcaPoliceRate:
 			rate := &RateSpec{}
-			if err := unmarshalStruct(ad.Bytes(), rate); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), rate)
+			concatError(multiError, err)
 			info.Rate = rate
 		case tcaPolicePeakRate:
 			rate := &RateSpec{}
-			if err := unmarshalStruct(ad.Bytes(), rate); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), rate)
+			concatError(multiError, err)
 			info.PeakRate = rate
 		case tcaPoliceAvRate:
 			info.AvRate = uint32Ptr(ad.Uint32())
@@ -76,9 +73,8 @@ func unmarshalPolice(data []byte, info *Police) error {
 			info.Result = uint32Ptr(ad.Uint32())
 		case tcaPoliceTm:
 			tm := &Tcft{}
-			if err := unmarshalStruct(ad.Bytes(), tm); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), tm)
+			concatError(multiError, err)
 			info.Tm = tm
 		case tcaPolicePad:
 			// padding does not contain data, we just skip it
@@ -93,7 +89,7 @@ func unmarshalPolice(data []byte, info *Police) error {
 
 		}
 	}
-	return nil
+	return concatError(multiError, ad.Err())
 }
 
 // marshalPolice returns the binary encoding of Police
@@ -103,26 +99,22 @@ func marshalPolice(info *Police) ([]byte, error) {
 	if info == nil {
 		return []byte{}, fmt.Errorf("Police: %w", ErrNoArg)
 	}
+	var multiError error
+
 	// TODO: improve logic and check combinations
 	if info.Rate != nil {
 		data, err := marshalStruct(info.Rate)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaPoliceRate, Data: data})
 	}
 	if info.PeakRate != nil {
 		data, err := marshalStruct(info.PeakRate)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaPolicePeakRate, Data: data})
 	}
 	if info.Tbf != nil {
 		data, err := marshalStruct(info.Tbf)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaPoliceTbf, Data: data})
 	}
 	if info.AvRate != nil {
@@ -139,6 +131,9 @@ func marshalPolice(info *Police) ([]byte, error) {
 	}
 	if info.Tm != nil {
 		return []byte{}, ErrNoArgAlter
+	}
+	if multiError != nil {
+		return []byte{}, multiError
 	}
 	return marshalAttributes(options)
 }

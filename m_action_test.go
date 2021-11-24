@@ -51,6 +51,8 @@ func TestAction(t *testing.T) {
 			TunnelKey: &TunnelKey{KeyEncKeyID: uint32Ptr(123)}}},
 		"gate": {val: Action{Kind: "gate",
 			Gate: &Gate{Parms: &GateParms{Index: 42}, Priority: int32Ptr(21)}}},
+		"gact": {val: Action{Kind: "gact",
+			Gact: &Gact{Prob: &GactProb{PType: 1}, Parms: &GactParms{Index: 2}}}},
 	}
 
 	for name, testcase := range tests {
@@ -78,9 +80,29 @@ func TestAction(t *testing.T) {
 		})
 	}
 	t.Run("nil", func(t *testing.T) {
-		_, err := marshalAction(nil)
+		_, err := marshalAction(nil, tcaActOptions)
 		if !errors.Is(err, ErrNoArg) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
+
+	t.Run("unmarshalAction(unknown)", func(t *testing.T) {
+		info := &Action{}
+		if err := unmarshalAction(generateActUnknown(t), info); err == nil {
+			t.Fatal("Expected error but got none")
+		}
+	})
+}
+
+func generateActUnknown(t *testing.T) []byte {
+	t.Helper()
+	options := []tcOption{}
+	options = append(options, tcOption{Interpretation: vtString, Type: tcaActKind, Data: "unknown"})
+	options = append(options, tcOption{Interpretation: vtBytes, Type: tcaActOptions, Data: []byte{0x42}})
+
+	data, err := marshalAttributes(options)
+	if err != nil {
+		t.Fatalf("could not generate test data: %v", err)
+	}
+	return data
 }

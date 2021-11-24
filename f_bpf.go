@@ -47,14 +47,18 @@ func unmarshalBpf(data []byte, info *Bpf) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		switch ad.Type() {
+		case tcaBpfAct:
+			actions := &[]*Action{}
+			err := unmarshalActions(ad.Bytes(), actions)
+			concatError(multiError, err)
+			info.Action = (*actions)[0]
 		case tcaBpfPolice:
 			pol := &Police{}
-			if err := unmarshalPolice(ad.Bytes(), pol); err != nil {
-				return err
-			}
+			err := unmarshalPolice(ad.Bytes(), pol)
+			concatError(multiError, err)
 			info.Police = pol
 		case tcaBpfClassID:
 			info.ClassID = uint32Ptr(ad.Uint32())
@@ -78,7 +82,7 @@ func unmarshalBpf(data []byte, info *Bpf) error {
 			return fmt.Errorf("unmarshalBpf()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return nil
+	return concatError(multiError, ad.Err())
 }
 
 // marshalBpf returns the binary encoding of Bpf
@@ -116,6 +120,14 @@ func marshalBpf(info *Bpf) ([]byte, error) {
 	}
 	if info.FlagsGen != nil {
 		options = append(options, tcOption{Interpretation: vtUint32, Type: tcaBpfFlagsGen, Data: uint32Value(info.FlagsGen)})
+	}
+	if info.Action != nil {
+		actions := []*Action{info.Action}
+		data, err := marshalActions(actions)
+		if err != nil {
+			return []byte{}, err
+		}
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaBpfAct, Data: data})
 	}
 	return marshalAttributes(options)
 }

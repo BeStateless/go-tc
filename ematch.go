@@ -66,9 +66,10 @@ type EmatchHdr struct {
 }
 
 type EmatchMatch struct {
-	Hdr      EmatchHdr
-	U32Match *U32Match
-	CmpMatch *CmpMatch
+	Hdr        EmatchHdr
+	U32Match   *U32Match
+	CmpMatch   *CmpMatch
+	IPSetMatch *IPSetMatch
 }
 
 // unmarshalEmatch parses the Ematch-encoded data and stores the result in the value pointed to by info.
@@ -77,26 +78,24 @@ func unmarshalEmatch(data []byte, info *Ematch) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaEmatchTreeHdr:
 			hdr := &EmatchTreeHdr{}
-			if err := unmarshalStruct(ad.Bytes(), hdr); err != nil {
-				return err
-			}
+			err := unmarshalStruct(ad.Bytes(), hdr)
+			concatError(multiError, err)
 			info.Hdr = hdr
 		case tcaEmatchTreeList:
 			list := []EmatchMatch{}
-			if err := unmarshalEmatchTreeList(ad.Bytes(), &list); err != nil {
-				return err
-			}
+			err := unmarshalEmatchTreeList(ad.Bytes(), &list)
+			concatError(multiError, err)
 			info.Matches = &list
 		default:
 			return fmt.Errorf("UnmarshalEmatch()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return ad.Err()
+	return concatError(multiError, ad.Err())
 }
 
 // marshalEmatch returns the binary encoding of Ematch
@@ -106,20 +105,20 @@ func marshalEmatch(info *Ematch) ([]byte, error) {
 	if info == nil {
 		return []byte{}, fmt.Errorf("Ematch: %w", ErrNoArg)
 	}
+	var multiError error
 
 	if info.Hdr != nil {
 		data, err := marshalStruct(info.Hdr)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaEmatchTreeHdr, Data: data})
 	}
 	if info.Matches != nil {
 		data, err := marshalEmatchTreeList(info.Matches)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaEmatchTreeList | nlaFNnested, Data: data})
+	}
+	if multiError != nil {
+		return []byte{}, multiError
 	}
 	return marshalAttributes(options)
 }
@@ -129,7 +128,7 @@ func unmarshalEmatchTreeList(data []byte, info *[]EmatchMatch) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		match := EmatchMatch{}
 		tmp := ad.Bytes()
@@ -139,22 +138,25 @@ func unmarshalEmatchTreeList(data []byte, info *[]EmatchMatch) error {
 		switch match.Hdr.Kind {
 		case EmatchU32:
 			expr := &U32Match{}
-			if err := unmarshalU32Match(tmp[8:], expr); err != nil {
-				return err
-			}
+			err := unmarshalU32Match(tmp[8:], expr)
+			concatError(multiError, err)
 			match.U32Match = expr
 		case EmatchCmp:
 			expr := &CmpMatch{}
-			if err := unmarshalCmpMatch(tmp[8:], expr); err != nil {
-				return err
-			}
+			err := unmarshalCmpMatch(tmp[8:], expr)
+			concatError(multiError, err)
 			match.CmpMatch = expr
+		case EmatchIPSet:
+			expr := &IPSetMatch{}
+			err := unmarshalIPSetMatch(tmp[8:], expr)
+			concatError(multiError, err)
+			match.IPSetMatch = expr
 		default:
 			return fmt.Errorf("unmarshalEmatchTreeList() kind %d is not yet implemented", match.Hdr.Kind)
 		}
 		*info = append(*info, match)
 	}
-	return ad.Err()
+	return concatError(multiError, ad.Err())
 }
 
 func marshalEmatchTreeList(info *[]EmatchMatch) ([]byte, error) {
@@ -171,6 +173,8 @@ func marshalEmatchTreeList(info *[]EmatchMatch) ([]byte, error) {
 			expr, err = marshalU32Match(m.U32Match)
 		case EmatchCmp:
 			expr, err = marshalCmpMatch(m.CmpMatch)
+		case EmatchIPSet:
+			expr, err = marshalIPSetMatch(m.IPSetMatch)
 		default:
 			return []byte{}, fmt.Errorf("marshalEmatchTreeList() kind %d is not yet implemented", m.Hdr.Kind)
 		}

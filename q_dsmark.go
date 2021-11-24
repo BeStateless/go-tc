@@ -30,7 +30,6 @@ func unmarshalDsmark(data []byte, info *Dsmark) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaDsmarkIndices:
@@ -47,7 +46,7 @@ func unmarshalDsmark(data []byte, info *Dsmark) error {
 			return fmt.Errorf("UnmarshalDsmark()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return nil
+	return ad.Err()
 }
 
 // marshalDsmark returns the binary encoding of Qfq

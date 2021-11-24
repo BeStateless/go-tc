@@ -27,28 +27,26 @@ func unmarshalBasic(data []byte, info *Basic) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaBasicPolice:
 			pol := &Police{}
-			if err := unmarshalPolice(ad.Bytes(), pol); err != nil {
-				return err
-			}
+			err := unmarshalPolice(ad.Bytes(), pol)
+			concatError(multiError, err)
 			info.Police = pol
 		case tcaBasicClassID:
 			info.ClassID = uint32Ptr(ad.Uint32())
 		case tcaBasicEmatches:
 			ematch := &Ematch{}
-			if err := unmarshalEmatch(ad.Bytes(), ematch); err != nil {
-				return err
-			}
+			err := unmarshalEmatch(ad.Bytes(), ematch)
+			concatError(multiError, err)
 			info.Ematch = ematch
 		default:
 			return fmt.Errorf("unmarshalBasic()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return ad.Err()
+	return concatError(multiError, ad.Err())
 }
 
 // marshalBasic returns the binary encoding of Basic
@@ -58,6 +56,7 @@ func marshalBasic(info *Basic) ([]byte, error) {
 	if info == nil {
 		return []byte{}, fmt.Errorf("Basic: %w", ErrNoArg)
 	}
+	var multiError error
 
 	// TODO: improve logic and check combinations
 	if info.ClassID != nil {
@@ -65,10 +64,16 @@ func marshalBasic(info *Basic) ([]byte, error) {
 	}
 	if info.Ematch != nil {
 		data, err := marshalEmatch(info.Ematch)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaBasicEmatches, Data: data})
+	}
+	if info.Police != nil {
+		data, err := marshalPolice(info.Police)
+		concatError(multiError, err)
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaBasicPolice, Data: data})
+	}
+	if multiError != nil {
+		return []byte{}, multiError
 	}
 	return marshalAttributes(options)
 }

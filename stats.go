@@ -60,38 +60,33 @@ func unmarshalGenStats(data []byte, info *GenStats) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaStatsBasic:
 			stat := &GenBasic{}
-			if err := unmarshalStruct(ad.Bytes(), stat); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), stat)
+			concatError(multiError, err)
 			info.Basic = stat
 		case tcaStatsRateEst:
 			stat := &GenRateEst{}
-			if err := unmarshalStruct(ad.Bytes(), stat); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), stat)
+			concatError(multiError, err)
 			info.RateEst = stat
 		case tcaStatsQueue:
 			stat := &GenQueue{}
-			if err := unmarshalStruct(ad.Bytes(), stat); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), stat)
+			concatError(multiError, err)
 			info.Queue = stat
 		case tcaStatsRateEst64:
 			stat := &GenRateEst64{}
-			if err := unmarshalStruct(ad.Bytes(), stat); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), stat)
+			concatError(multiError, err)
 			info.RateEst64 = stat
 		case tcaStatsBasicHw:
 			stat := &GenBasic{}
-			if err := unmarshalStruct(ad.Bytes(), stat); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), stat)
+			concatError(multiError, err)
 			info.BasicHw = stat
 		case tcaStatsPad:
 			// padding does not contain data, we just skip it
@@ -99,7 +94,7 @@ func unmarshalGenStats(data []byte, info *GenStats) error {
 			return fmt.Errorf("unmarshalGenStats()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return nil
+	return concatError(multiError, ad.Err())
 }
 
 // marshalGenStats returns the binary encoding of GenStats
@@ -110,40 +105,36 @@ func marshalGenStats(info *GenStats) ([]byte, error) {
 		return []byte{}, fmt.Errorf("GenStats: %w", ErrNoArg)
 	}
 
+	var multiError error
+
 	if info.Basic != nil {
 		data, err := marshalStruct(info.Basic)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaStatsBasic, Data: data})
 	}
 	if info.RateEst != nil {
 		data, err := marshalStruct(info.RateEst)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaStatsRateEst, Data: data})
 	}
 	if info.Queue != nil {
 		data, err := marshalStruct(info.Queue)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaStatsQueue, Data: data})
 	}
 	if info.RateEst64 != nil {
 		data, err := marshalStruct(info.RateEst64)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaStatsRateEst64, Data: data})
 	}
 	if info.BasicHw != nil {
 		data, err := marshalStruct(info.BasicHw)
-		if err != nil {
-			return []byte{}, err
-		}
+		concatError(multiError, err)
 		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaStatsBasicHw, Data: data})
+	}
+
+	if multiError != nil {
+		return []byte{}, multiError
 	}
 
 	return marshalAttributes(options)

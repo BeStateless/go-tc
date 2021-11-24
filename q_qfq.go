@@ -24,7 +24,6 @@ func unmarshalQfq(data []byte, info *Qfq) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaQfqWeight:
@@ -35,7 +34,7 @@ func unmarshalQfq(data []byte, info *Qfq) error {
 			return fmt.Errorf("UnmarshalQfq()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return nil
+	return ad.Err()
 }
 
 // marshalQfq returns the binary encoding of Qfq

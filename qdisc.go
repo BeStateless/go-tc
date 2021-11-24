@@ -104,6 +104,8 @@ func validateQdiscObject(action int, info *Object) ([]tcOption, error) {
 		data, err = marshalTbf(info.Tbf)
 	case "sfb":
 		data, err = marshalSfb(info.Sfb)
+	case "sfq":
+		data, err = marshalSfq(info.Sfq)
 	case "red":
 		data, err = marshalRed(info.Red)
 	case "qfq":
@@ -135,6 +137,10 @@ func validateQdiscObject(action int, info *Object) ([]tcOption, error) {
 		data, err = marshalHtb(info.Htb)
 	case "netem":
 		data, err = marshalNetem(info.Netem)
+	case "prio":
+		data, err = marshalPrio(info.Prio)
+	case "plug":
+		data, err = marshalPlug(info.Plug)
 	case "clsact":
 		// clsact is parameterless
 	case "ingress":

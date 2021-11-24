@@ -71,22 +71,19 @@ func unmarshalVLan(data []byte, info *VLan) error {
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		switch ad.Type() {
 		case tcaVLanParms:
 			parms := &VLanParms{}
-			if err := unmarshalStruct(ad.Bytes(), parms); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), parms)
+			concatError(multiError, err)
 			info.Parms = parms
 		case tcaVLanTm:
 			tcft := &Tcft{}
-			if err := unmarshalStruct(ad.Bytes(), tcft); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), tcft)
+			concatError(multiError, err)
 			info.Tm = tcft
-
 		case tcaVLanPushVLanID:
 			tmp := ad.Uint16()
 			info.PushID = &tmp
@@ -102,5 +99,5 @@ func unmarshalVLan(data []byte, info *VLan) error {
 			return fmt.Errorf("unmarshalVLan()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return nil
+	return concatError(multiError, ad.Err())
 }

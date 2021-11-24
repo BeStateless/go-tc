@@ -9,32 +9,32 @@ import (
 const (
 	tcaGactUnspec = iota
 	tcaGactTm
-	tcaGactParms
+	tcaGactParm
 	tcaGactProb
 	tcaGactPad
 )
 
-// Gact contains attribute of the Gact discipline
+// type Gact contains attributes of the gact discipline
 type Gact struct {
-	Parms       *GactParms
-	Tm          *Tcft
-	Prob        *GactProb
+	Tm    *Tcft
+	Parms *GactParms
+	Prob  *GactProb
 }
 
-// GactParms include attributes from include/uapi/linux/tc_act/tc_gact.h
+// GactProb from include/uapi/linux/tc_act/tc_gact.h
+type GactProb struct {
+	PType   uint16
+	PVal    uint16
+	PAction uint32
+}
+
+// GactParm from include/uapi/linux/tc_act/tc_gact.h
 type GactParms struct {
 	Index   uint32
 	Capab   uint32
 	Action  uint32
 	RefCnt  uint32
 	BindCnt uint32
-}
-
-// GactProb defines the type of generic action that will be taken
-type GactProb struct {
-	Ptype       uint16
-	Pval        uint16
-	Paction     uint64
 }
 
 // marshalGact returns the binary encoding of Gact
@@ -48,52 +48,53 @@ func marshalGact(info *Gact) ([]byte, error) {
 	if info.Tm != nil {
 		return []byte{}, ErrNoArgAlter
 	}
+	var multiError error
+
+	if info.Prob != nil {
+		data, err := marshalStruct(info.Prob)
+		concatError(multiError, err)
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaGactProb, Data: data})
+	}
 	if info.Parms != nil {
 		data, err := marshalStruct(info.Parms)
-		if err != nil {
-			return []byte{}, err
-		}
-		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaGactParms, Data: data})
+		concatError(multiError, err)
+		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaGactParm, Data: data})
 	}
-	if info.Prob != nil {
-		options = append(options, tcOption{Interpretation: vtBytes, Type: tcaGactProb, Data: *info.Prob})
+	if multiError != nil {
+		return []byte{}, multiError
 	}
-
 	return marshalAttributes(options)
 }
 
-// unmarshalGact parses the Gact-encoded data and stores the result in the value pointed to by info.
+// unmarshalGact parses the gact-encoded data and stores the result in the value pointed to by info.
 func unmarshalGact(data []byte, info *Gact) error {
 	ad, err := netlink.NewAttributeDecoder(data)
 	if err != nil {
 		return err
 	}
-	ad.ByteOrder = nativeEndian
+	var multiError error
 	for ad.Next() {
 		switch ad.Type() {
-		case tcaGactParms:
-			parms := &GactParms{}
-			if err := unmarshalStruct(ad.Bytes(), parms); err != nil {
-				return err
-			}
-			info.Parms = parms
 		case tcaGactTm:
 			tcft := &Tcft{}
-			if err := unmarshalStruct(ad.Bytes(), tcft); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), tcft)
+			concatError(multiError, err)
 			info.Tm = tcft
+		case tcaGactParm:
+			parms := &GactParms{}
+			err = unmarshalStruct(ad.Bytes(), parms)
+			concatError(multiError, err)
+			info.Parms = parms
 		case tcaGactProb:
 			prob := &GactProb{}
-			if err := unmarshalStruct(ad.Bytes(), prob); err != nil {
-				return err
-			}
+			err = unmarshalStruct(ad.Bytes(), prob)
+			concatError(multiError, err)
 			info.Prob = prob
 		case tcaGactPad:
 			// padding does not contain data, we just skip it
 		default:
-			return fmt.Errorf("unmarshalGact()\t%d\n\t%v", ad.Type(), ad.Bytes())
+			return fmt.Errorf("UnmarshalGact()\t%d\n\t%v", ad.Type(), ad.Bytes())
 		}
 	}
-	return nil
+	return concatError(multiError, ad.Err())
 }

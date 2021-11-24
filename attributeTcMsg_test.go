@@ -155,13 +155,26 @@ func generateQfq(t *testing.T) []byte {
 	return data
 }
 
+func generateUnknown(t *testing.T) []byte {
+	t.Helper()
+	options := []tcOption{}
+	options = append(options, tcOption{Interpretation: vtString, Type: tcaKind, Data: "unknown"})
+
+	data, err := marshalAttributes(options)
+	if err != nil {
+		t.Fatalf("could not generate test data: %v", err)
+	}
+	return data
+}
+
 func TestExtractTcmsgAttributes(t *testing.T) {
 	tests := map[string]struct {
 		input    []byte
 		expected *Attribute
 		err      error
 	}{
-		"empty": {input: []byte{}, expected: &Attribute{}},
+		"empty":   {input: []byte{}, expected: &Attribute{}},
+		"unknown": {input: generateUnknown(t), expected: &Attribute{Kind: "unknown"}},
 		"clsact": {input: generateClsact(t), expected: &Attribute{Kind: "clsact", HwOffload: uint8Ptr(0x60),
 			EgressBlock: uint32Ptr(0x1337), IngressBlock: uint32Ptr(0xcafe), Chain: uint32Ptr(42)}},
 		"htb": {input: generateHtb(t), expected: &Attribute{Kind: "htb",
@@ -185,11 +198,14 @@ func TestExtractTcmsgAttributes(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			value := &Attribute{}
 			if err := extractTcmsgAttributes(0xCAFE, testcase.input, value); err != nil {
-				if testcase.err != nil && testcase.err.Error() == err.Error() {
+				if errors.Is(err, testcase.err) {
 					// we received the expected error. everything is fine
 					return
 				}
 				t.Fatalf("Received error '%v', but expected '%v'", err, testcase.err)
+			}
+			if testcase.err != nil {
+				t.Fatalf("Expected error '%v' but got none", testcase.err)
 			}
 			if diff := cmp.Diff(value, testcase.expected); diff != "" {
 				t.Fatalf("ExtractTcmsgAttributes missmatch (-want +got):\n%s", diff)
@@ -209,6 +225,10 @@ func TestExtractTCAOptions(t *testing.T) {
 		"clsactWithData": {kind: "clsact", data: []byte{0xde, 0xad, 0xc0, 0xde}, err: ErrInvalidArg},
 		"ingress":        {kind: "ingress", expected: &Attribute{}},
 		"unknown":        {kind: "unknown", err: ErrUnknownKind},
+		"pfifo_fast": {kind: "pfifo_fast",
+			data: []byte{0x03, 0x00, 0x00, 0x00, 0x01, 0x02, 0x02, 0x02, 0x01, 0x02, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01},
+			expected: &Attribute{Prio: &Prio{Bands: 3,
+				PrioMap: [16]uint8{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}}}},
 	}
 
 	for name, testcase := range tests {
@@ -282,26 +302,29 @@ func TestQdiscAttribute(t *testing.T) {
 		err1 error
 		err2 error
 	}{
-		"clsact":   {val: &Attribute{Kind: "clsact"}},
-		"ingress":  {val: &Attribute{Kind: "ingress"}},
-		"atm":      {val: &Attribute{Kind: "atm", Atm: &Atm{FD: uint32Ptr(12), Addr: &AtmPvc{Itf: byte(2)}}}},
-		"cbq":      {val: &Attribute{Kind: "cbq", Cbq: &Cbq{LssOpt: &CbqLssOpt{OffTime: 10}, WrrOpt: &CbqWrrOpt{Weight: 42}, FOpt: &CbqFOpt{Split: 2}, OVLStrategy: &CbqOvl{Penalty: 2}}}},
-		"codel":    {val: &Attribute{Kind: "codel", Codel: &Codel{Target: uint32Ptr(1), Limit: uint32Ptr(2), Interval: uint32Ptr(3), ECN: uint32Ptr(4), CEThreshold: uint32Ptr(5)}}},
-		"drr":      {val: &Attribute{Kind: "drr", Drr: &Drr{Quantum: uint32Ptr(345)}}},
-		"dsmark":   {val: &Attribute{Kind: "dsmark", Dsmark: &Dsmark{Indices: uint16Ptr(12), DefaultIndex: uint16Ptr(34), Mask: uint8Ptr(56), Value: uint8Ptr(78)}}},
-		"fq":       {val: &Attribute{Kind: "fq", Fq: &Fq{PLimit: uint32Ptr(1), FlowPLimit: uint32Ptr(2), Quantum: uint32Ptr(3), InitQuantum: uint32Ptr(4), RateEnable: uint32Ptr(5), FlowDefaultRate: uint32Ptr(6), FlowMaxRate: uint32Ptr(7), BucketsLog: uint32Ptr(8), FlowRefillDelay: uint32Ptr(9), OrphanMask: uint32Ptr(10), LowRateThreshold: uint32Ptr(11), CEThreshold: uint32Ptr(12)}}},
-		"fq_codel": {val: &Attribute{Kind: "fq_codel", FqCodel: &FqCodel{Target: uint32Ptr(1), Limit: uint32Ptr(2), Interval: uint32Ptr(3), ECN: uint32Ptr(4), Flows: uint32Ptr(5), Quantum: uint32Ptr(6), CEThreshold: uint32Ptr(7), DropBatchSize: uint32Ptr(8), MemoryLimit: uint32Ptr(9)}}},
-		"hfsc":     {val: &Attribute{Kind: "hfsc", HfscQOpt: &HfscQOpt{DefCls: 42}}},
-		"hhf":      {val: &Attribute{Kind: "hhf", Hhf: &Hhf{BacklogLimit: uint32Ptr(1), Quantum: uint32Ptr(2), HHFlowsLimit: uint32Ptr(3), ResetTimeout: uint32Ptr(4), AdmitBytes: uint32Ptr(5), EVICTTimeout: uint32Ptr(6), NonHHWeight: uint32Ptr(7)}}},
-		"htb":      {val: &Attribute{Kind: "htb", Htb: &Htb{Init: &HtbGlob{Version: 0x3, Rate2Quantum: 0xa, Defcls: 0x30}}}},
-		"mqprio":   {val: &Attribute{Kind: "mqprio", MqPrio: &MqPrio{Mode: uint16Ptr(1), Shaper: uint16Ptr(2), MinRate64: uint64Ptr(3), MaxRate64: uint64Ptr(4)}}},
-		"pie":      {val: &Attribute{Kind: "pie", Pie: &Pie{Target: uint32Ptr(1), Limit: uint32Ptr(2), TUpdate: uint32Ptr(3), Alpha: uint32Ptr(4), Beta: uint32Ptr(5), ECN: uint32Ptr(6), Bytemode: uint32Ptr(7)}}},
-		"qfq":      {val: &Attribute{Kind: "qfq"}},
-		"red":      {val: &Attribute{Kind: "red", Red: &Red{MaxP: uint32Ptr(2), Parms: &RedQOpt{QthMin: 2, QthMax: 4}}}},
-		"sfb":      {val: &Attribute{Kind: "sfb", Sfb: &Sfb{Parms: &SfbQopt{Max: 0xFF}}}},
-		"tbf":      {val: &Attribute{Kind: "tbf", Tbf: &Tbf{Burst: uint32Ptr(3), Pburst: uint32Ptr(4)}}, err1: ErrNoArg},
-		"pfifo":    {val: &Attribute{Kind: "pfifo", Pfifo: &FifoOpt{Limit: 42}}},
-		"bfifo":    {val: &Attribute{Kind: "bfifo", Bfifo: &FifoOpt{Limit: 84}}},
+		"clsact":       {val: &Attribute{Kind: "clsact"}},
+		"ingress":      {val: &Attribute{Kind: "ingress"}},
+		"atm":          {val: &Attribute{Kind: "atm", Atm: &Atm{FD: uint32Ptr(12), Addr: &AtmPvc{Itf: byte(2)}}}},
+		"cbq":          {val: &Attribute{Kind: "cbq", Cbq: &Cbq{LssOpt: &CbqLssOpt{OffTime: 10}, WrrOpt: &CbqWrrOpt{Weight: 42}, FOpt: &CbqFOpt{Split: 2}, OVLStrategy: &CbqOvl{Penalty: 2}}}},
+		"codel":        {val: &Attribute{Kind: "codel", Codel: &Codel{Target: uint32Ptr(1), Limit: uint32Ptr(2), Interval: uint32Ptr(3), ECN: uint32Ptr(4), CEThreshold: uint32Ptr(5)}}},
+		"drr":          {val: &Attribute{Kind: "drr", Drr: &Drr{Quantum: uint32Ptr(345)}}},
+		"dsmark":       {val: &Attribute{Kind: "dsmark", Dsmark: &Dsmark{Indices: uint16Ptr(12), DefaultIndex: uint16Ptr(34), Mask: uint8Ptr(56), Value: uint8Ptr(78)}}},
+		"fq":           {val: &Attribute{Kind: "fq", Fq: &Fq{PLimit: uint32Ptr(1), FlowPLimit: uint32Ptr(2), Quantum: uint32Ptr(3), InitQuantum: uint32Ptr(4), RateEnable: uint32Ptr(5), FlowDefaultRate: uint32Ptr(6), FlowMaxRate: uint32Ptr(7), BucketsLog: uint32Ptr(8), FlowRefillDelay: uint32Ptr(9), OrphanMask: uint32Ptr(10), LowRateThreshold: uint32Ptr(11), CEThreshold: uint32Ptr(12)}}},
+		"fq_codel":     {val: &Attribute{Kind: "fq_codel", FqCodel: &FqCodel{Target: uint32Ptr(1), Limit: uint32Ptr(2), Interval: uint32Ptr(3), ECN: uint32Ptr(4), Flows: uint32Ptr(5), Quantum: uint32Ptr(6), CEThreshold: uint32Ptr(7), DropBatchSize: uint32Ptr(8), MemoryLimit: uint32Ptr(9)}}},
+		"hfsc":         {val: &Attribute{Kind: "hfsc", HfscQOpt: &HfscQOpt{DefCls: 42}}},
+		"hhf":          {val: &Attribute{Kind: "hhf", Hhf: &Hhf{BacklogLimit: uint32Ptr(1), Quantum: uint32Ptr(2), HHFlowsLimit: uint32Ptr(3), ResetTimeout: uint32Ptr(4), AdmitBytes: uint32Ptr(5), EVICTTimeout: uint32Ptr(6), NonHHWeight: uint32Ptr(7)}}},
+		"htb":          {val: &Attribute{Kind: "htb", Htb: &Htb{Init: &HtbGlob{Version: 0x3, Rate2Quantum: 0xa, Defcls: 0x30}}}},
+		"mqprio":       {val: &Attribute{Kind: "mqprio", MqPrio: &MqPrio{Opt: &MqPrioQopt{}, Mode: uint16Ptr(1), Shaper: uint16Ptr(2), MinRate64: uint64Ptr(3), MaxRate64: uint64Ptr(4)}}},
+		"pie":          {val: &Attribute{Kind: "pie", Pie: &Pie{Target: uint32Ptr(1), Limit: uint32Ptr(2), TUpdate: uint32Ptr(3), Alpha: uint32Ptr(4), Beta: uint32Ptr(5), ECN: uint32Ptr(6), Bytemode: uint32Ptr(7)}}},
+		"qfq":          {val: &Attribute{Kind: "qfq"}},
+		"red":          {val: &Attribute{Kind: "red", Red: &Red{MaxP: uint32Ptr(2), Parms: &RedQOpt{QthMin: 2, QthMax: 4}}}},
+		"sfb":          {val: &Attribute{Kind: "sfb", Sfb: &Sfb{Parms: &SfbQopt{Max: 0xFF}}}},
+		"tbf":          {val: &Attribute{Kind: "tbf", Tbf: &Tbf{Burst: uint32Ptr(3), Pburst: uint32Ptr(4)}}, err1: ErrNoArg},
+		"pfifo":        {val: &Attribute{Kind: "pfifo", Pfifo: &FifoOpt{Limit: 42}}},
+		"bfifo":        {val: &Attribute{Kind: "bfifo", Bfifo: &FifoOpt{Limit: 84}}},
+		"<unknown>":    {val: &Attribute{Kind: "<unknown>"}, err1: ErrNotImplemented},
+		"clsact+stats": {val: &Attribute{Kind: "clsact", Stats: &Stats{Drops: 42}}, err1: ErrNotImplemented},
+		"clsact+stab":  {val: &Attribute{Kind: "clsact", Stab: &Stab{Base: &SizeSpec{MTU: 9200}}}},
 	}
 
 	for name, testcase := range tests {
