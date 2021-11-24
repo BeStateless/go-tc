@@ -5,12 +5,12 @@ package tc_test
 
 import (
 	"fmt"
+	"github.com/bestateless/go-tc"
+	"github.com/bestateless/go-tc/core"
+	"github.com/bestateless/go-tc/internal/unix"
 	"net"
 	"os"
 
-	"github.com/florianl/go-tc"
-	"github.com/florianl/go-tc/core"
-	"github.com/florianl/go-tc/internal/unix"
 	"github.com/jsimonetti/rtnetlink"
 )
 

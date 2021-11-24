@@ -6,8 +6,6 @@ import (
 
 	"github.com/bestateless/go-tc/core"
 	"github.com/bestateless/go-tc/internal/unix"
-
-	"github.com/mdlayher/netlink"
 )
 
 func TestQdisc(t *testing.T) {

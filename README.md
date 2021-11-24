@@ -5,6 +5,14 @@ This is a work in progress version of `tc`.  It provides a [C](https://en.wikipe
 ## Example
 
 ```golang
+package example
+
+import (
+	"fmt"
+	"os"
+	"github.com/bestateless/go-tc"
+)
+
 func main() {
 	// open a rtnetlink socket
 	rtnl, err := tc.Open(&tc.Config{})
